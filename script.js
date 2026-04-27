@@ -4,19 +4,13 @@
 const SUPABASE_URL = "https://ovvtjqwkfdwymbczcanm.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-ug71BjVdFs9OLHKBBvCXA_U2FJkOrL"; // 👈 reemplaza esto
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ================================
-// API FASTAPI
-// ================================
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const API_URL = "https://agrolyz-backend-production.up.railway.app/predecir";
 
-// ================================
-// CUANDO CARGA EL DOM
-// ================================
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ===== ELEMENTOS =====
     const loginCard = document.getElementById('login-card');
     const registerCard = document.getElementById('register-card');
     const loginSection = document.getElementById('login-section');
@@ -30,24 +24,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLogout = document.getElementById('btn-logout');
     const btnAnalizar = document.getElementById('btn-analizar');
 
-    // ================================
-    // CAMBIO LOGIN / REGISTER
-    // ================================
-    showLogin.onclick = (e) => {
-        e.preventDefault();
-        registerCard.classList.add('hidden');
-        loginCard.classList.remove('hidden');
-    };
+    if (showLogin) {
+        showLogin.onclick = (e) => {
+            e.preventDefault();
+            registerCard.classList.add('hidden');
+            loginCard.classList.remove('hidden');
+        };
+    }
 
-    showRegister.onclick = (e) => {
-        e.preventDefault();
-        loginCard.classList.add('hidden');
-        registerCard.classList.remove('hidden');
-    };
+    if (showRegister) {
+        showRegister.onclick = (e) => {
+            e.preventDefault();
+            loginCard.classList.add('hidden');
+            registerCard.classList.remove('hidden');
+        };
+    }
 
-    // ================================
-    // REGISTRO
-    // ================================
     btnRegister.onclick = async () => {
 
         const email = document.getElementById("reg-email").value;
@@ -55,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nombre = document.getElementById("reg-nombre").value;
         const ubicacion = document.getElementById("reg-ubicacion").value;
 
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await client.auth.signUp({
             email,
             password,
             options: {
@@ -67,28 +59,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (error) {
-            alert("Error registro: " + error.message);
+            alert(error.message);
             return;
         }
 
-        alert("Registro exitoso. Revisa tu correo o inicia sesión.");
+        alert("Registro exitoso");
     };
 
-    // ================================
-    // LOGIN
-    // ================================
     btnLogin.onclick = async () => {
 
         const email = document.getElementById("login-email").value;
         const password = document.getElementById("login-password").value;
 
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await client.auth.signInWithPassword({
             email,
             password
         });
 
         if (error) {
-            alert("Error login: " + error.message);
+            alert(error.message);
             return;
         }
 
@@ -96,63 +85,33 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardSection.style.display = "block";
     };
 
-    // ================================
-    // LOGOUT
-    // ================================
     btnLogout.onclick = async () => {
-        await supabase.auth.signOut();
-        loginSection.style.display = "block";
-        dashboardSection.style.display = "none";
+        await client.auth.signOut();
+        location.reload();
     };
 
-    // ================================
-    // ANALIZAR IMAGEN
-    // ================================
     btnAnalizar.onclick = analizarHoja;
 });
 
-
-// ================================
-// FUNCIÓN IA
-// ================================
 async function analizarHoja() {
 
     const fileInput = document.getElementById('foto-hoja');
     const resultadoBox = document.getElementById('resultado-box');
 
-    if (!fileInput.files.length) {
-        alert("Sube una imagen");
-        return;
-    }
-
     const formData = new FormData();
     formData.append("imagen", fileInput.files[0]);
 
-    resultadoBox.classList.remove('hidden');
-    resultadoBox.innerText = "⏳ Analizando con IA...";
+    resultadoBox.innerText = "Analizando...";
 
-    try {
-        const res = await fetch(API_URL, {
-            method: "POST",
-            body: formData
-        });
+    const res = await fetch(API_URL, {
+        method: "POST",
+        body: formData
+    });
 
-        const data = await res.json();
+    const data = await res.json();
 
-        console.log("IA:", data);
-
-        if (!data.valido) {
-            resultadoBox.innerHTML = "⚠️ " + data.mensaje;
-            return;
-        }
-
-        resultadoBox.innerHTML = `
-            🌿 <b>Diagnóstico:</b> ${data.diagnostico}<br>
-            🎯 <b>Confianza:</b> ${data.confianza}%
-        `;
-
-    } catch (err) {
-        console.log(err);
-        resultadoBox.innerHTML = "❌ Error con el servidor";
-    }
+    resultadoBox.innerHTML = `
+        🌿 ${data.diagnostico || data.mensaje}<br>
+        🎯 ${data.confianza || 0}%
+    `;
 }
