@@ -2,13 +2,7 @@
 // CONFIG SUPABASE
 // ================================
 const SUPABASE_URL = "https://ovvtjqwkfdwymbczcanm.supabase.co";
-const SUPABASE_KEY = "sb_publishable_-ug71BjVdFs9OLHKBBvCXA_U2FJkOrL"; // 👈 reemplaza esto
-
-
-// ================================
-// CONFIG SUPABASE
-// ================================
-
+const SUPABASE_KEY = "sb_publishable_-ug71BjVdFs9OLHKBBvCXA_U2FJkOrL";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -35,8 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnLogout = document.getElementById('btn-logout');
     const btnAnalizar = document.getElementById('btn-analizar');
 
+    const fileInput = document.getElementById('foto-hoja');
+    const previewImg = document.getElementById('preview-img');
+
     // ================================
-    // ESTADO INICIAL (MUY IMPORTANTE)
+    // ESTADO INICIAL
     // ================================
     loginSection.style.display = "block";
     dashboardSection.style.display = "none";
@@ -44,38 +41,83 @@ document.addEventListener('DOMContentLoaded', async () => {
     loginCard.classList.remove('hidden');
 
     // ================================
-    // VERIFICAR SI YA HAY SESIÓN
+    // VERIFICAR SESIÓN
     // ================================
-    const { data: { user } } = await client.auth.getUser();
+    try {
 
-    if (user) {
-        loginSection.style.display = "none";
-        dashboardSection.style.display = "block";
+        const { data: { user } } = await client.auth.getUser();
+
+        if (user) {
+            loginSection.style.display = "none";
+            dashboardSection.style.display = "block";
+        }
+
+    } catch (error) {
+
+        console.log("No hay sesión");
+
+    }
+
+    // ================================
+    // MOSTRAR IMAGEN SELECCIONADA
+    // ================================
+    if (fileInput && previewImg) {
+
+        fileInput.addEventListener('change', function () {
+
+            if (this.files && this.files[0]) {
+
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+
+                    previewImg.src = e.target.result;
+                    previewImg.style.display = "block";
+
+                };
+
+                reader.readAsDataURL(this.files[0]);
+
+            }
+
+        });
+
     }
 
     // ================================
     // CAMBIO LOGIN / REGISTER
     // ================================
     if (showLogin) {
+
         showLogin.onclick = (e) => {
+
             e.preventDefault();
+
             registerCard.classList.add('hidden');
             loginCard.classList.remove('hidden');
+
         };
+
     }
 
     if (showRegister) {
+
         showRegister.onclick = (e) => {
+
             e.preventDefault();
+
             loginCard.classList.add('hidden');
             registerCard.classList.remove('hidden');
+
         };
+
     }
 
     // ================================
     // REGISTRO
     // ================================
     if (btnRegister) {
+
         btnRegister.onclick = async () => {
 
             const email = document.getElementById("reg-email").value;
@@ -84,68 +126,88 @@ document.addEventListener('DOMContentLoaded', async () => {
             const ubicacion = document.getElementById("reg-ubicacion").value;
 
             const { error } = await client.auth.signUp({
+
                 email,
                 password,
+
                 options: {
                     data: {
                         nombre_completo: nombre,
                         ubicacion_cultivo: ubicacion
                     }
                 }
+
             });
 
             if (error) {
+
                 alert("Error: " + error.message);
                 return;
+
             }
 
-            alert("Registro exitoso. Ahora puedes iniciar sesión.");
+            alert("Registro exitoso");
 
-            // Volver al login automáticamente
             registerCard.classList.add('hidden');
             loginCard.classList.remove('hidden');
+
         };
+
     }
 
     // ================================
     // LOGIN
     // ================================
     if (btnLogin) {
+
         btnLogin.onclick = async () => {
 
             const email = document.getElementById("login-email").value;
             const password = document.getElementById("login-password").value;
 
             const { error } = await client.auth.signInWithPassword({
+
                 email,
                 password
+
             });
 
             if (error) {
+
                 alert("Error: " + error.message);
                 return;
+
             }
 
             loginSection.style.display = "none";
             dashboardSection.style.display = "block";
+
         };
+
     }
 
     // ================================
     // LOGOUT
     // ================================
     if (btnLogout) {
+
         btnLogout.onclick = async () => {
+
             await client.auth.signOut();
+
             location.reload();
+
         };
+
     }
 
     // ================================
     // ANALIZAR IMAGEN
     // ================================
     if (btnAnalizar) {
+
         btnAnalizar.onclick = analizarHoja;
+
     }
 
 });
@@ -160,31 +222,57 @@ async function analizarHoja() {
     const resultadoBox = document.getElementById('resultado-box');
 
     if (!fileInput.files.length) {
-        alert("Debes subir una imagen");
+
+        alert("Debes seleccionar una imagen");
+
         return;
+
     }
 
     const formData = new FormData();
-    formData.append("imagen", fileInput.files[0]);
 
-    resultadoBox.innerText = "⏳ Analizando con IA...";
+    formData.append(
+        "imagen",
+        fileInput.files[0]
+    );
+
+    resultadoBox.innerText =
+        "⏳ Analizando con IA...";
 
     try {
 
-        const res = await fetch(API_URL, {
-            method: "POST",
-            body: formData
-        });
+        const res = await fetch(
+            API_URL,
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        if (!res.ok) {
+
+            throw new Error(
+                "Servidor no respondió"
+            );
+
+        }
 
         const data = await res.json();
 
+        console.log("Respuesta IA:", data);
+
         if (!data.valido) {
-            resultadoBox.innerHTML = "⚠️ " + data.mensaje;
+
+            resultadoBox.innerHTML =
+                "⚠️ " + data.mensaje;
+
             return;
+
         }
 
         resultadoBox.innerHTML = `
-            🌿 <b>Diagnóstico:</b> ${data.diagnostico}<br>
+            🌿 <b>Diagnóstico:</b> ${data.diagnostico}
+            <br>
             🎯 <b>Confianza:</b> ${data.confianza}%
         `;
 
